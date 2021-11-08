@@ -1,18 +1,33 @@
 """
 Container implementation of https://mostly-adequate.gitbook.io/mostly-adequate-guide/ch08...
+
+# TODO: Treat <monad>.of() as <monad>.__init__()...
 """
 
 from typing import Any, Callable
-
 from src.support import compose
 
-identity = lambda x: x
+
+def identity(x):
+    return x
 
 
-class Container:
+class Monad:
+    @property
+    def name(self):
+        return self.__class__.__name__
 
     def __init__(self, value: Any):
         self.value = value
+
+    def __repr__(self):
+        return f'{self.name}({self.value})'
+
+    def __str__(self):
+        return f'{self.name}({self.value})'
+
+
+class Container(Monad):
 
     @staticmethod
     def of(value: Any) -> 'Container':
@@ -22,9 +37,7 @@ class Container:
         return Container.of(method(self.value))
 
 
-class Either:
-    def __init__(self, value: Any):
-        self.value = value
+class Either(Monad):
 
     @staticmethod
     def of(value: Any) -> 'Correct':
@@ -115,13 +128,13 @@ class Identity:
 class IO:
 
     def __init__(self, method: Callable):
-        self.unsafe_perform_io = method
+        self.__unsafe_perform_io = method
 
     def of(self, value: Any) -> 'IO':
         return IO(lambda _: value)
 
     def map(self, method: Callable):
-        return IO(compose(method, self.unsafe_perform_io))
+        return IO(compose(method, self.__unsafe_perform_io))
 
     def ap(self, f):
         return self.chain(lambda method: f.map(method))
@@ -130,38 +143,43 @@ class IO:
         return self.map(method).join()
 
     def join(self):
-        return IO(lambda _: self.unsafe_perform_io().unsafe_perform_io())
+        return IO(lambda _: self.__unsafe_perform_io().__unsafe_perform_io())
+
+    def execute_effect(self, *args, **kwargs):
+        self.__unsafe_perform_io(*args, **kwargs)
 
 
-class Maybe:
-
-    def __init__(self, value: Any):
-        self.value = value
-
+class Maybe(Monad):
     @staticmethod
     def of(value: Any) -> 'Maybe':
         return Maybe(value)
 
-    def is_nothing(self):
-        return not self.value
+    @property
+    def name(self):
+        return 'Nothing' if self.is_nothing else 'Just'
 
+    @property
+    def is_nothing(self):
+        return self.value is None
+
+    @property
     def is_just(self):
-        return not self.is_nothing()
+        return not self.is_nothing
 
     def map(self, method: Callable):
-        return self if self.is_nothing() else Maybe.of(method(self.value))
+        return self if self.is_nothing else Maybe.of(method(self.value))
 
     def ap(self, f):
-        return self if self.is_nothing() else f.map(self.value)
+        return self if self.is_nothing else f.map(self.value)
 
     def chain(self, method: Callable):
         return self.map(method).join()
 
     def join(self):
-        return self if self.is_nothing() else self.value
+        return self if self.is_nothing else self.value
 
     def sequence(self, of):
         return self.traverse(of, identity)
 
     def traverse(self, of, method: Callable):
-        return of(self) if self.is_nothing() else method(self.value).map(Maybe.of)
+        return of(self) if self.is_nothing else method(self.value).map(Maybe.of)
