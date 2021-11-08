@@ -1,19 +1,9 @@
-from functools import partial, wraps
-from typing import Any, Callable
+from typing import Any, Callable, Union
 
 
 def named_as(val: Any, fn: Callable):
     setattr(fn, '__name__', val)
     return fn
-
-
-# def curry(fn: Callable):
-#     arity = len(fn)
-#     return named_as(fn.__name__, lambda x: curry(*args))
-
-
-def curry_man(method: Callable) -> Callable:
-    ...
 
 
 def curry(fn: Callable) -> Callable:
@@ -23,46 +13,31 @@ def curry(fn: Callable) -> Callable:
 
     Reference: https://www.python-course.eu/currying_in_python.php
 
-    :param fn:
-    :return:
+    :param fn: The method to curry...
+    :return: Curried [given] method...
     """
 
     # To keep the name of the curried function...
     curry.__curried_func_name__ = fn.__name__
-    f_args, f_kwargs = [], {}
     amount = fn.__code__.co_argcount
-    real_amount = 0
 
-    @wraps(fn)
     def f(*args, **kwargs):
-        nonlocal f_args, f_kwargs, real_amount
         if args or kwargs:
-            f_args += args
-            f_kwargs.update(kwargs)
-            real_amount += len(args)
 
-            if real_amount >= amount:
-              return fn(*f_args, *f_kwargs)
-            else:
-              return f
-        else:
-            result = fn(*f_args, *f_kwargs)
-            f_args, f_kwargs = [], {}
-            return result
+            def inner(_fn):
+                return lambda *_args, **_kwargs: _fn(*[*args, *_args], **{**kwargs, **_kwargs})
+
+            if amount == 0 and len(args) > 0:
+                return lambda *_args, **_kwargs: inner(f if len(_args) > 0 else fn)(*_args, **_kwargs)
+
+            if len(args) >= amount:
+                return fn(*args, **kwargs)
+
+            return inner(f)
+
+        return fn(*args, **kwargs)
 
     return f
-
-
-def curry2(func):
-    """Curries func into a chain of one argument functions."""
-    n = func.__code__.co_argcount
-
-    if n <= 1:
-        return func
-    elif n == 2:
-        return lambda x: lambda y: func(x, y)
-    else:
-        return lambda x: curry(partial(func, x), n - 1)
 
 
 def compose(*functions):
@@ -73,9 +48,30 @@ def compose(*functions):
     return inner
 
 
-prop = curry(lambda p, obj:  getattr(obj, p))
-# prop = lambda p: curry(lambda obj:  getattr(obj, p))
+def pipe(*functions):
+    """Works as `compose()` but with direct order..."""
+    def inner(arg):
+        for f in functions:
+            arg = f(arg)
+        return arg
+    return inner
 
+
+def g(property_name: Union[str, int], obj: Any) -> Any:
+    try:
+        if property_name in obj:
+            return obj[property_name]
+
+        if isinstance(obj, list) and len(obj) > property_name:
+            return obj[property_name]
+    except TypeError:
+        ...
+
+    # return None
+    return getattr(obj, property_name)
+
+
+prop = curry(g)
 
 # def prop(name: str) -> Callable:
 #     def inner(obj: object) -> Any:
