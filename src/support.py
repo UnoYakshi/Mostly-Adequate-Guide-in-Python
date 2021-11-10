@@ -57,7 +57,7 @@ def pipe(*functions):
     return inner
 
 
-def g(property_name: Union[str, int], obj: Any) -> Any:
+def get_property_of(property_name: Union[str, int], obj: Any) -> Any:
     try:
         if property_name in obj:
             return obj[property_name]
@@ -65,13 +65,19 @@ def g(property_name: Union[str, int], obj: Any) -> Any:
         if isinstance(obj, list) and len(obj) > property_name:
             return obj[property_name]
     except TypeError:
-        ...
+        pass
 
-    # return None
     return getattr(obj, property_name)
 
 
-prop = curry(g)
+prop = curry(get_property_of)
+
+map = curry(lambda fn, functor: functor.map(fn))
+
+join = lambda monad: monad.join()
+
+chain = lambda f: compose(join, map(f))
+
 
 # def prop(name: str) -> Callable:
 #     def inner(obj: object) -> Any:
