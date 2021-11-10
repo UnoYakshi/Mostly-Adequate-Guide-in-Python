@@ -1,7 +1,5 @@
 """
-Container implementation of https://mostly-adequate.gitbook.io/mostly-adequate-guide/ch08...
-
-# TODO: Treat <monad>.of() as <monad>.__init__()...
+Implementation reference: https://github.com/fantasyland/fantasy-land
 """
 
 from typing import Any, Callable
