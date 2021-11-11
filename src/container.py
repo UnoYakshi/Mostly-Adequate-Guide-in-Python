@@ -2,27 +2,17 @@
 Implementation reference: https://github.com/fantasyland/fantasy-land
 """
 
+
+from __future__ import annotations
+
 from typing import Any, Callable
+
+from src.fantazy_land import Functor, Monad
 from src.support import compose
 
 
 def identity(x):
     return x
-
-
-class Monad:
-    @property
-    def name(self):
-        return self.__class__.__name__
-
-    def __init__(self, value: Any):
-        self.value = value
-
-    def __repr__(self):
-        return f'{self.name}({self.value})'
-
-    def __str__(self):
-        return f'{self.name}({self.value})'
 
 
 class Container(Monad):
@@ -53,7 +43,7 @@ class Correct(Either):
     def map(self, fn: Callable):
         return Either.of(fn(self.value))
 
-    def ap(self, f: 'Functor'):
+    def ap(self, f: Functor):
         return f.map(self.value)
 
     def chain(self, fn: Callable):
@@ -78,7 +68,7 @@ class Incorrect(Either):
     def of(self, value: Any):
         raise Exception(f'`of` called on class Incorrect({value}) instead of Either(type)')
 
-    def map(self):
+    def map(self, method: Callable) -> Incorrect:
         return self
 
     def ap(self):
@@ -149,7 +139,7 @@ class IO:
 
 class Maybe(Monad):
     @staticmethod
-    def of(value: Any) -> 'Maybe':
+    def of(value: Any) -> Maybe:
         return Maybe(value)
 
     @property
